@@ -16,7 +16,7 @@
   "control_limits": {
     "max_roll_pitch_angle_deg": 45.0,
     "max_yaw_rate_dps": 90.0,
-    "max_pitch_roll_rate_command_dps": 180.0
+    "max_pitch_roll_rate_dps": 180.0
   },
   "pid_gains": {
     "z_position": [0.39, 0.0, 0.2],
