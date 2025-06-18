@@ -1,9 +1,6 @@
 # Webots Drone Flight Controller
 
-A comprehensive drone flight control system (FCS) implemented in Python for the Webots simulator. This project features a sophisticated cascaded PID control architecture, multiple flight modes, a full-featured Primary Flight Display (PFD), and real-time diagnostic plots for performance tuning.
-
-![Screenshot of PFD and Plots](placeholder.png)
-*(Image placeholder: A screenshot showing the Webots simulation with the Primary Flight Display on one screen and the real-time diagnostic plots on another.)*
+A comprehensive drone flight control system (FCS) implemented in Python for the Webots simulator. This project features a  cascaded PID control architecture, multiple flight modes, a full-featured Primary Flight Display (PFD), and real-time diagnostic plots for performance tuning.
 
 ---
 
@@ -133,8 +130,8 @@ pip install pygame
 ### Installation & Running
 
 ```bash
-git clone https://github.com/your-username/your-repo-name.git
-cd your-repo-name
+git clone https://github.com/cristian1928/Webots-Quadrotor-Simulator.git
+cd Webots-Quadrotor-Simulator
 ```
 
 1. Open Webots and navigate to the project directory.
