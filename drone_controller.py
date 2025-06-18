@@ -142,8 +142,8 @@ class DroneController:
             control_targets = {'roll_rate': target_roll_rate, 'pitch_rate': target_pitch_rate, 'yaw_rate': target_yaw_rate, 'thrust': thrust_cmd, 'roll_angle': target_roll, 'pitch_angle': target_pitch}
 
         else: # ACRO
-            target_roll_rate = input_commands['roll'] * math.radians(limits['max_acro_rate_dps'])
-            target_pitch_rate = input_commands['pitch'] * math.radians(limits['max_acro_rate_dps'])
+            target_roll_rate = input_commands['roll'] * math.radians(limits['max_pitch_roll_rate_command_dps'])
+            target_pitch_rate = input_commands['pitch'] * math.radians(limits['max_pitch_roll_rate_command_dps'])
             target_yaw_rate = input_commands['yaw'] * math.radians(limits['max_yaw_rate_dps'])
             self.state['manual_throttle_thrust'] = input_commands['throttle'] * (self.MAX_THRUST_PER_MOTOR * 4)
             self.state['target_altitude_m'] = sensor_data['altitude_m']

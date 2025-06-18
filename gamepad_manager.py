@@ -25,6 +25,9 @@ class GamepadManager:
         self.AXIS_LEFT_STICK_Y = 1
         self.AXIS_RIGHT_STICK_X = 2
         self.AXIS_RIGHT_STICK_Y = 3
+        self.AXIS_LEFT_TRIGGER = 4
+        self.AXIS_RIGHT_TRIGGER = 5
+
         self.BUTTON_A = 0
         self.START = 6
 
@@ -52,11 +55,13 @@ class GamepadManager:
         pygame.event.pump()
 
         # Mode 2 Drone Control Mapping
-        # Get raw, deadzoned values first
         raw_throttle = -self._apply_deadzone(self.joystick.get_axis(self.AXIS_LEFT_STICK_Y))
-        yaw_input    = -self._apply_deadzone(self.joystick.get_axis(self.AXIS_LEFT_STICK_X))
-        pitch_input  = -self._apply_deadzone(self.joystick.get_axis(self.AXIS_RIGHT_STICK_Y))
-        roll_input   =  self._apply_deadzone(self.joystick.get_axis(self.AXIS_RIGHT_STICK_X))
+        left_trigger_value = self._apply_deadzone(self.joystick.get_axis(self.AXIS_LEFT_TRIGGER))
+        right_trigger_value = self._apply_deadzone(self.joystick.get_axis(self.AXIS_RIGHT_TRIGGER))
+        yaw_input = -(right_trigger_value - left_trigger_value) 
+        
+        pitch_input = -self._apply_deadzone(self.joystick.get_axis(self.AXIS_RIGHT_STICK_Y))
+        roll_input = self._apply_deadzone(self.joystick.get_axis(self.AXIS_RIGHT_STICK_X))
         
         # Apply the expo curve only to the throttle
         throttle_input = self._apply_expo(raw_throttle, self.THROTTLE_EXPO)
