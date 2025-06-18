@@ -1,5 +1,5 @@
 import math
-from pid_controller import PID, clamp
+from pid_controller import PID, _clamp
 
 class DroneController:
     def __init__(self, config):
@@ -41,15 +41,15 @@ class DroneController:
     def _initialize_pids(self):
         gains = self.config['pid_gains']
         self.pids = {
-            'altitude':    PID(*gains['z_position'], integral_limit=0),
-            'pos_x':       PID(*gains['xy_position'], integral_limit=0),
-            'pos_y':       PID(*gains['xy_position'], integral_limit=0),
-            'roll_angle':  PID(*gains['roll_pitch_angle'], integral_limit=0),
-            'pitch_angle': PID(*gains['roll_pitch_angle'], integral_limit=0),
-            'yaw_angle':   PID(*gains['yaw_angle'], integral_limit=0),
-            'roll_rate':   PID(*gains['roll_pitch_rate'], integral_limit=0),
-            'pitch_rate':  PID(*gains['roll_pitch_rate'], integral_limit=0),
-            'yaw_rate':    PID(*gains['yaw_rate'], integral_limit=0),
+            'altitude':    PID(Kp=gains['z_position'][0], Ki=gains['z_position'][1], Kd=gains['z_position'][2], output_limits=(None, None), sample_time=None),
+            'pos_x':       PID(Kp=gains['xy_position'][0], Ki=gains['xy_position'][1], Kd=gains['xy_position'][2], output_limits=(None, None), sample_time=None),
+            'pos_y':       PID(Kp=gains['xy_position'][0], Ki=gains['xy_position'][1], Kd=gains['xy_position'][2], output_limits=(None, None), sample_time=None),
+            'roll_angle':  PID(Kp=gains['roll_pitch_angle'][0], Ki=gains['roll_pitch_angle'][1], Kd=gains['roll_pitch_angle'][2], output_limits=(None, None), sample_time=None),
+            'pitch_angle': PID(Kp=gains['roll_pitch_angle'][0], Ki=gains['roll_pitch_angle'][1], Kd=gains['roll_pitch_angle'][2], output_limits=(None, None), sample_time=None),
+            'yaw_angle':   PID(Kp=gains['yaw_angle'][0], Ki=gains['yaw_angle'][1], Kd=gains['yaw_angle'][2], output_limits=(None, None), sample_time=None),
+            'roll_rate':   PID(Kp=gains['roll_pitch_rate'][0], Ki=gains['roll_pitch_rate'][1], Kd=gains['roll_pitch_rate'][2], output_limits=(None, None), sample_time=None),
+            'pitch_rate':  PID(Kp=gains['roll_pitch_rate'][0], Ki=gains['roll_pitch_rate'][1], Kd=gains['roll_pitch_rate'][2], output_limits=(None, None), sample_time=None),
+            'yaw_rate':    PID(Kp=gains['yaw_rate'][0], Ki=gains['yaw_rate'][1], Kd=gains['yaw_rate'][2], output_limits=(None, None), sample_time=None),
         }
 
     def reset(self):
@@ -94,30 +94,50 @@ class DroneController:
         if self.state['flight_mode'] == 'POSITION':
             self.state['target_x_pos_m'] += input_commands['roll'] * time_step_s
             self.state['target_y_pos_m'] += input_commands['pitch'] * time_step_s
-            target_pitch = self.pids['pos_x'].update(self.state['target_x_pos_m'], sensor_data['gps_values'][0], time_step_s)
-            target_roll = self.pids['pos_y'].update(self.state['target_y_pos_m'], sensor_data['gps_values'][1], time_step_s)
-            target_pitch = clamp(target_pitch, -math.radians(limits['max_roll_pitch_angle_deg']), math.radians(limits['max_roll_pitch_angle_deg']))
-            target_roll = clamp(target_roll, -math.radians(limits['max_roll_pitch_angle_deg']), math.radians(limits['max_roll_pitch_angle_deg']))
-            target_roll_rate = self.pids['roll_angle'].update(target_roll, sensor_data['roll_rad'], time_step_s)
-            target_pitch_rate = self.pids['pitch_angle'].update(target_pitch, sensor_data['pitch_rad'], time_step_s)
+
+            self.pids['pos_x'].setpoint = self.state['target_x_pos_m']
+            target_pitch = self.pids['pos_x'](sensor_data['gps_values'][0], dt=time_step_s)
+            
+            self.pids['pos_y'].setpoint = self.state['target_y_pos_m']
+            target_roll = self.pids['pos_y'](sensor_data['gps_values'][1], dt=time_step_s)
+            
+            target_pitch = _clamp(target_pitch, (-math.radians(limits['max_roll_pitch_angle_deg']), math.radians(limits['max_roll_pitch_angle_deg'])))
+            target_roll = _clamp(target_roll, (-math.radians(limits['max_roll_pitch_angle_deg']), math.radians(limits['max_roll_pitch_angle_deg'])))
+            
+            self.pids['roll_angle'].setpoint = target_roll
+            target_roll_rate = self.pids['roll_angle'](sensor_data['roll_rad'], dt=time_step_s)
+            
+            self.pids['pitch_angle'].setpoint = target_pitch
+            target_pitch_rate = self.pids['pitch_angle'](sensor_data['pitch_rad'], dt=time_step_s)
+            
             self.state['target_yaw_angle_rad'] += input_commands['yaw'] * math.radians(limits['max_yaw_rate_dps']) * time_step_s
             yaw_err = self.state['target_yaw_angle_rad'] - sensor_data['heading_rad']
             wrapped_heading = sensor_data['heading_rad'] + round(yaw_err / (2 * math.pi)) * (2 * math.pi)
-            target_yaw_rate = self.pids['yaw_angle'].update(self.state['target_yaw_angle_rad'], wrapped_heading, time_step_s)
+            self.pids['yaw_angle'].setpoint = self.state['target_yaw_angle_rad']
+            target_yaw_rate = self.pids['yaw_angle'](wrapped_heading, dt=time_step_s)
+            
             self.state['target_altitude_m'] += input_commands['throttle'] * time_step_s
-            alt_thrust = self.pids['altitude'].update(self.state['target_altitude_m'], sensor_data['altitude_m'], time_step_s)
+            self.pids['altitude'].setpoint = self.state['target_altitude_m']
+            alt_thrust = self.pids['altitude'](sensor_data['altitude_m'], dt=time_step_s)
             thrust_cmd = self.HOVER_THRUST_TOTAL + alt_thrust
             control_targets = {'roll_rate': target_roll_rate, 'pitch_rate': target_pitch_rate, 'yaw_rate': target_yaw_rate, 'thrust': thrust_cmd, 'roll_angle': target_roll, 'pitch_angle': target_pitch}
 
         elif self.state['flight_mode'] == 'ANGLE':
             target_roll = input_commands['roll'] * math.radians(limits['max_roll_pitch_angle_deg'])
             target_pitch = input_commands['pitch'] * math.radians(limits['max_roll_pitch_angle_deg'])
-            target_roll_rate = self.pids['roll_angle'].update(target_roll, sensor_data['roll_rad'], time_step_s)
-            target_pitch_rate = self.pids['pitch_angle'].update(target_pitch, sensor_data['pitch_rad'], time_step_s)
+            
+            self.pids['roll_angle'].setpoint = target_roll
+            target_roll_rate = self.pids['roll_angle'](sensor_data['roll_rad'], dt=time_step_s)
+            
+            self.pids['pitch_angle'].setpoint = target_pitch
+            target_pitch_rate = self.pids['pitch_angle'](sensor_data['pitch_rad'], dt=time_step_s)
+            
             self.state['target_yaw_angle_rad'] += input_commands['yaw'] * math.radians(limits['max_yaw_rate_dps']) * time_step_s
             yaw_err = self.state['target_yaw_angle_rad'] - sensor_data['heading_rad']
             wrapped_heading = sensor_data['heading_rad'] + round(yaw_err / (2 * math.pi)) * (2 * math.pi)
-            target_yaw_rate = self.pids['yaw_angle'].update(self.state['target_yaw_angle_rad'], wrapped_heading, time_step_s)
+            self.pids['yaw_angle'].setpoint = self.state['target_yaw_angle_rad']
+            target_yaw_rate = self.pids['yaw_angle'](wrapped_heading, dt=time_step_s)
+            
             thrust_cmd = input_commands['throttle'] * (self.MAX_THRUST_PER_MOTOR * 4)
             control_targets = {'roll_rate': target_roll_rate, 'pitch_rate': target_pitch_rate, 'yaw_rate': target_yaw_rate, 'thrust': thrust_cmd, 'roll_angle': target_roll, 'pitch_angle': target_pitch}
 
@@ -132,11 +152,17 @@ class DroneController:
 
         # Rate control (inner loop)
         max_rate = math.radians(limits['max_pitch_roll_rate_command_dps'])
-        clamped_roll_rate = clamp(control_targets['roll_rate'], -max_rate, max_rate)
-        clamped_pitch_rate = clamp(control_targets['pitch_rate'], -max_rate, max_rate)
-        roll_moment = self.pids['roll_rate'].update(clamped_roll_rate, sensor_data['roll_rate_rads'], time_step_s)
-        pitch_moment = self.pids['pitch_rate'].update(clamped_pitch_rate, sensor_data['pitch_rate_rads'], time_step_s)
-        yaw_torque = self.pids['yaw_rate'].update(control_targets['yaw_rate'], sensor_data['yaw_rate_rads'], time_step_s)
+        clamped_roll_rate = _clamp(control_targets['roll_rate'], (-max_rate, max_rate))
+        clamped_pitch_rate = _clamp(control_targets['pitch_rate'], (-max_rate, max_rate))
+        
+        self.pids['roll_rate'].setpoint = clamped_roll_rate
+        roll_moment = self.pids['roll_rate'](sensor_data['roll_rate_rads'], dt=time_step_s)
+        
+        self.pids['pitch_rate'].setpoint = clamped_pitch_rate
+        pitch_moment = self.pids['pitch_rate'](sensor_data['pitch_rate_rads'], dt=time_step_s)
+        
+        self.pids['yaw_rate'].setpoint = control_targets['yaw_rate']
+        yaw_torque = self.pids['yaw_rate'](sensor_data['yaw_rate_rads'], dt=time_step_s)
         
         # Motor Mixing
         t, r, p, y = control_targets['thrust'], roll_moment, pitch_moment, yaw_torque
@@ -151,9 +177,9 @@ class DroneController:
         
         motor_velocities = []
         for thrust in motor_thrusts:
-            clamped_thrust = clamp(thrust, 0.0, self.MAX_THRUST_PER_MOTOR)
+            clamped_thrust = _clamp(thrust, (0.0, self.MAX_THRUST_PER_MOTOR))
             velocity = self.THRUST_TO_VELOCITY_FACTOR * math.sqrt(clamped_thrust)
-            clamped_velocity = clamp(velocity, 0.0, self.MAX_MOTOR_SPEED_RADS)
+            clamped_velocity = _clamp(velocity, (0.0, self.MAX_MOTOR_SPEED_RADS))
             motor_velocities.append(clamped_velocity)
         
         drone_targets_for_display = {'x': self.state.get('target_x_pos_m', 0.0), 'y': self.state.get('target_y_pos_m', 0.0), 'z': self.state.get('target_altitude_m', 0.0)}
