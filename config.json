@@ -21,8 +21,8 @@
   "pid_gains": {
     "z_position": [0.39, 0.0, 0.2],
     "xy_position": [0.0, 0.0, 0.0],
-    "roll_pitch_angle": [5, 0.0, 0.0],
-    "yaw_angle": [10.0, 0.0, 0.0],
+    "roll_pitch_angle": [2.5, 0.0, 0.0],
+    "yaw_angle": [5, 0.0, 0.0],
     "roll_pitch_rate": [0.001, 0.0005, 0.000015],
     "yaw_rate": [0.00125, 0.00075, 0.000025]
   }
